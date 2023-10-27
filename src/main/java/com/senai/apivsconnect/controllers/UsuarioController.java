@@ -66,5 +66,20 @@ public class UsuarioController {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioRepository.save(usuario));
     }
 
+    @DeleteMapping("/{idUsuario}")
+    public ResponseEntity<Object> deletarUsuario(@PathVariable(value = "idUsuario") UUID id) {
+        Optional<UsuarioModel> usuarioBuscado = usuarioRepository.findById(id);
+
+        if (usuarioBuscado.isEmpty()) {
+            //Retornar usuario näo encontrado
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Usuário näo encontrado");
+        }
+
+        usuarioRepository.delete(usuarioBuscado.get());
+
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Usuário deletado com sucesso!");
+
+    }
+
 
 }
