@@ -3,13 +3,16 @@ package com.senai.apivsconnect.controllers;
 import com.senai.apivsconnect.dtos.UsuarioDto;
 import com.senai.apivsconnect.models.UsuarioModel;
 import com.senai.apivsconnect.repositories.UsuarioRepository;
+import com.senai.apivsconnect.services.FileUploadService;
 import jakarta.validation.Valid;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +23,9 @@ import java.util.UUID;
 public class UsuarioController {
     @Autowired
     UsuarioRepository usuarioRepository;
+
+    @Autowired
+    FileUploadService fileUploadService;
 
     @GetMapping
     public ResponseEntity<List<UsuarioModel>> listarUsuarios() {
@@ -38,8 +44,8 @@ public class UsuarioController {
         return ResponseEntity.status(HttpStatus.OK).body(usuarioBuscado.get());
     }
 
-    @PostMapping
-    public ResponseEntity<Object> cadastrarUsuario(@RequestBody @Valid UsuarioDto usuarioDto){
+    @PostMapping(consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<Object> cadastrarUsuario(@ModelAttribute @Valid UsuarioDto usuarioDto){
         if (usuarioRepository.findByEmail(usuarioDto.email()) != null) {
             //Não pode cadastrar
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Esse email já esta cadastrado!");
@@ -48,11 +54,21 @@ public class UsuarioController {
         UsuarioModel usuario = new UsuarioModel();
         BeanUtils.copyProperties(usuarioDto, usuario);
 
+        String urlImagem;
+
+        try {
+            urlImagem = fileUploadService.FazerUpload(usuarioDto.imagem());
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
+        }
+
+        usuario.setUrl_img(urlImagem);
+
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioRepository.save(usuario));
     }
 
-    @PutMapping("/{idUsuario}")
-    public ResponseEntity<Object> editarUsuario(@PathVariable(value="idUsuario") UUID id, @RequestBody @Valid UsuarioDto usuarioDto) {
+    @PutMapping(value = "/{idUsuario}", consumes = {MediaType.MULTIPART_FORM_DATA_VALUE})
+    public ResponseEntity<Object> editarUsuario(@ModelAttribute(value="idUsuario") UUID id, @RequestBody @Valid UsuarioDto usuarioDto) {
         Optional<UsuarioModel> usuarioBuscado = usuarioRepository.findById(id);
 
         if (usuarioBuscado.isEmpty()) {
@@ -62,6 +78,16 @@ public class UsuarioController {
 
         UsuarioModel usuario =  usuarioBuscado.get();
         BeanUtils.copyProperties(usuarioDto, usuario);
+
+        String urlImagem;
+
+        try {
+            urlImagem = fileUploadService.FazerUpload(usuarioDto.imagem());
+        } catch (IOException exception) {
+            throw new RuntimeException(exception);
+        }
+
+        usuario.setUrl_img(urlImagem);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioRepository.save(usuario));
     }
@@ -78,7 +104,6 @@ public class UsuarioController {
         usuarioRepository.delete(usuarioBuscado.get());
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT).body("Usuário deletado com sucesso!");
-
     }
 
 
